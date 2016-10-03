@@ -8,6 +8,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+#include <string>
 #include "cmdParser.h"
 
 
@@ -19,6 +20,7 @@ using namespace std;
 void mybeep();
 char mygetc(istream&);
 ParseChar getChar(istream&);
+
 void moveCursorR(char*&, char*&);
 void moveCursorL(char*&, const char&);
 void backspace(char*&, char*&,const char&);
@@ -371,7 +373,7 @@ CmdParser::moveToHistory(int index)
                 _readBufPtr++;
               }
           }
-          
+
         retrieveHistory();
 
         
@@ -395,15 +397,43 @@ CmdParser::moveToHistory(int index)
 void
 CmdParser::addHistory()
 {
-   // vTODO...
+   // TODO...
     if(_tempCmdStored){
 
       _history.pop_back();
 
-      _tempCmdStored = false;
+      _tempCmdStored = true;
     }
+    
 
-    _history.push_back(_readBuf);
+    //check space
+        
+        while(*_readBuf==' '){
+          char* next_ptr;
+          _readBufPtr = _readBuf;
+          next_ptr = _readBufPtr;
+          next_ptr++;
+          while(_readBufPtr!=_readBufEnd){
+            *_readBufPtr=*next_ptr;
+            _readBufPtr++;
+            next_ptr++;
+          }
+          _readBufEnd--;
+          *_readBufEnd = '\0';
+
+        }
+   
+        while(*(_readBufEnd-1)==' '){
+          _readBufEnd--;
+          *_readBufEnd = '\0';
+        }
+      
+
+
+   
+
+   if(_readBuf!=_readBufEnd)  
+      _history.push_back(_readBuf);
 
     _readBufPtr = _readBuf;
 
