@@ -7,7 +7,9 @@
 ****************************************************************************/
 #include <cassert>
 #include <cstring>
+#include <vector>
 #include "cmdParser.h"
+
 
 using namespace std;
 
@@ -62,7 +64,7 @@ CmdParser::readCmdInt(istream& istr)
          case ARROW_LEFT_KEY : /* vTODO */ moveCursorL(_readBufPtr,_readBuf[0]); break;
          case PG_UP_KEY      : moveToHistory(_historyIdx - PG_OFFSET); break;
          case PG_DOWN_KEY    : moveToHistory(_historyIdx + PG_OFFSET); break;
-         case TAB_KEY        : /* TODO */ insertTab(_readBufPtr,_readBufEnd); break;
+         case TAB_KEY        : /* vTODO */ insertTab(_readBufPtr,_readBufEnd); break;
          case INSERT_KEY     : // not yet supported; fall through to UNDEFINE
          case UNDEFINED_KEY:   mybeep(); break;
          default:  // printable character
@@ -91,7 +93,6 @@ bool
 CmdParser::moveBufPtr(char* const ptr)
 {
    //vTODO...
-
   while(_readBufPtr!=ptr){
 
     if(ptr==_readBuf){
@@ -136,7 +137,6 @@ CmdParser::deleteChar()
 {
    // vTODO...
 
-
    if(_readBufPtr!=_readBufEnd){
 
          char* temp_ptr=_readBufPtr;
@@ -163,13 +163,18 @@ CmdParser::deleteChar()
 
         _readBufEnd--;
 
+        *_readBufEnd = '\0';
+
+
         cout<<" ";
 
         for(int i=1;i<(count+1);i++)
+
           cout<<'\b';
    }
 
    else
+
     mybeep();
 
    return true;
@@ -194,64 +199,64 @@ void
 CmdParser::insertChar(char ch, int repeat)
 {
    // vTODO...
+    assert(repeat >= 1);
 
-   if(_readBufPtr == _readBufEnd){
-  
-      *_readBufPtr = ch;
+    for(int i=0; i<repeat; i++){
 
-      _readBufEnd++;
-
-      cout<< *_readBufPtr;
-
-      _readBufPtr++;
-
-  }
-
-  else{
-    char temp_c;
-    char next_c;
-    char* temp_ptr;
-    int count=0;
-
-    temp_c = ch;
-    temp_ptr = _readBufPtr;
-
-    _readBufEnd++;
-
-    while(_readBufPtr!=_readBufEnd){
-
-      next_c = *_readBufPtr;
-
-      *_readBufPtr = temp_c;
-
-      cout<<*_readBufPtr;
-
-      _readBufPtr++;
-
-      temp_c = next_c;
-
-      count++;
-
-    }
-
-    _readBufPtr = temp_ptr;
+       if(_readBufPtr == _readBufEnd){
       
+          *_readBufPtr = ch;
 
-    for(int i=1;i<count;i++)
-      cout<<'\b';
+          _readBufEnd++;
 
-    _readBufPtr = temp_ptr;
+          cout<< *_readBufPtr;
 
-    _readBufPtr++;
+          _readBufPtr++;
 
-  }
+      }
 
+      else{
 
+        char temp_c;
+        char next_c;
+        char* temp_ptr;
+        int count=0;
 
+        temp_c = ch;
 
+        temp_ptr = _readBufPtr;
 
-   assert(repeat >= 1);
+        _readBufEnd++;
 
+        while(_readBufPtr!=_readBufEnd){
+
+          next_c = *_readBufPtr;
+
+          *_readBufPtr = temp_c;
+
+          cout<<*_readBufPtr;
+
+          _readBufPtr++;
+
+          temp_c = next_c;
+
+          count++;
+
+        }
+
+        _readBufPtr = temp_ptr;
+          
+
+        for(int i=1;i<count;i++)
+
+          cout<<'\b';
+
+        _readBufPtr = temp_ptr;
+
+        _readBufPtr++;
+
+      }  
+    }
 
 }
 
@@ -272,7 +277,30 @@ CmdParser::insertChar(char ch, int repeat)
 void
 CmdParser::deleteLine()
 {
-   // TODO...
+     // vTODO...
+
+    while(_readBufPtr!=_readBuf){
+
+      cout<<'\b';
+
+      _readBufPtr--;
+    }
+
+    while(_readBufPtr!=_readBufEnd){
+
+      cout<<' ';
+
+      _readBufPtr++;
+    }
+
+    while(_readBufPtr!=_readBuf){
+
+      cout<<'\b';
+
+      _readBufPtr--;
+    }
+
+
 }
 
 
@@ -297,9 +325,60 @@ CmdParser::deleteLine()
 void
 CmdParser::moveToHistory(int index)
 {
-   // TODO...
-}
+  if(!_tempCmdStored){
 
+   if(index<0 || index>_history.size())
+
+      mybeep();
+
+   else{
+
+      if(_historyIdx == _history.size()){
+
+        _history.push_back(_readBuf);
+
+        _tempCmdStored = true;
+
+      }
+        _historyIdx = index;
+      
+        retrieveHistory();
+    }
+  }
+
+  else{
+
+     if(index<0 || index>(_history.size()-1))
+
+        mybeep();
+
+      else{
+
+        _historyIdx = index;
+        
+        if(_historyIdx == (_history.size()-1)){
+            
+            _history.pop_back();
+            
+            _tempCmdStored = false;
+
+            _readBufPtr = _readBuf;
+
+              while(_readBufPtr!=_readBufEnd){
+
+                *_readBufPtr='\0';
+
+                _readBufPtr++;
+              }
+          }
+          
+        retrieveHistory();
+
+        
+
+      }
+    }
+}
 
 // This function adds the string in _readBuf to the _history.
 // The size of _history may or may not change. Depending on whether 
@@ -316,7 +395,29 @@ CmdParser::moveToHistory(int index)
 void
 CmdParser::addHistory()
 {
-   // TODO...
+   // vTODO...
+    if(_tempCmdStored){
+
+      _history.pop_back();
+
+      _tempCmdStored = false;
+    }
+
+    _history.push_back(_readBuf);
+
+    _readBufPtr = _readBuf;
+
+    while(_readBufPtr!=_readBufEnd){
+
+      *_readBufPtr='\0';
+
+      _readBufPtr++;
+    }
+
+    _readBufPtr = _readBufEnd = _readBuf;
+
+    _historyIdx = _history.size();
+
 }
 
 
@@ -331,12 +432,13 @@ CmdParser::retrieveHistory()
    deleteLine();
    
    strcpy(_readBuf, _history[_historyIdx].c_str());
-   
+
    cout << _readBuf;
-   
+
    _readBufPtr = _readBufEnd = _readBuf + _history[_historyIdx].size();
 }
 
+//My Functions 
 void backspace(char*& rbp,char*& rbe,const char& rb){
 
   if(rbp!=&rb){
@@ -364,9 +466,13 @@ void backspace(char*& rbp,char*& rbe,const char& rb){
     count++;
   }
 
+
   rbp--; 
   
   rbe--;
+
+  *rbe='\0';
+
   
   cout<<" ";
   
@@ -409,7 +515,7 @@ void moveCursorL(char*& rbp, const char& rb){
 
 void insertTab(char*& rbp, char*& rbe){
 
-    if(rbp == rbe){
+  if(rbp == rbe){
 
       for(int i=0; i<TAB_POSITION; i++){
 
@@ -432,6 +538,7 @@ void insertTab(char*& rbp, char*& rbe){
       int count=0;
 
       temp_c = ' ';
+
       temp_ptr = rbp;
 
       rbe++;
