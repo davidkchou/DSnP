@@ -11,7 +11,6 @@
 #include <string>
 #include "cmdParser.h"
 
-
 using namespace std;
 
 //----------------------------------------------------------------------
@@ -20,12 +19,6 @@ using namespace std;
 void mybeep();
 char mygetc(istream&);
 ParseChar getChar(istream&);
-
-void moveCursorR(char*&, char*&);
-void moveCursorL(char*&, const char&);
-void backspace(char*&, char*&,const char&);
-void insertTab(char*&, char*&);
-
 
 //----------------------------------------------------------------------
 //    Member Function for class Parser
@@ -55,18 +48,20 @@ CmdParser::readCmdInt(istream& istr)
          case HOME_KEY       : moveBufPtr(_readBuf); break;
          case LINE_END_KEY   :
          case END_KEY        : moveBufPtr(_readBufEnd); break;
-         case BACK_SPACE_KEY : /* vTODO */ backspace(_readBufPtr,_readBufEnd,_readBuf[0]); break;
+         case BACK_SPACE_KEY : moveBufPtr(_readBufPtr-1);
+                               deleteChar();
+                               break;
          case DELETE_KEY     : deleteChar(); break;
          case NEWLINE_KEY    : addHistory();
                                cout << char(NEWLINE_KEY);
                                resetBufAndPrintPrompt(); break;
          case ARROW_UP_KEY   : moveToHistory(_historyIdx - 1); break;
          case ARROW_DOWN_KEY : moveToHistory(_historyIdx + 1); break;
-         case ARROW_RIGHT_KEY: /* vTODO */ moveCursorR(_readBufPtr,_readBufEnd); break;
-         case ARROW_LEFT_KEY : /* vTODO */ moveCursorL(_readBufPtr,_readBuf[0]); break;
+         case ARROW_RIGHT_KEY: moveBufPtr(_readBufPtr+1); break;
+         case ARROW_LEFT_KEY : moveBufPtr(_readBufPtr-1); break;
          case PG_UP_KEY      : moveToHistory(_historyIdx - PG_OFFSET); break;
          case PG_DOWN_KEY    : moveToHistory(_historyIdx + PG_OFFSET); break;
-         case TAB_KEY        : /* vTODO */ insertTab(_readBufPtr,_readBufEnd); break;
+         case TAB_KEY        : insertChar(' ', TAB_POSITION); break;
          case INSERT_KEY     : // not yet supported; fall through to UNDEFINE
          case UNDEFINED_KEY:   mybeep(); break;
          default:  // printable character
@@ -95,9 +90,14 @@ bool
 CmdParser::moveBufPtr(char* const ptr)
 {
    //vTODO...
+  if(ptr>_readBufEnd || ptr<_readBuf){
+    mybeep();
+    return true;
+  }
+  else{
   while(_readBufPtr!=ptr){
 
-    if(ptr==_readBuf){
+    if(ptr<_readBufPtr){
     
       _readBufPtr--;
     
@@ -111,8 +111,8 @@ CmdParser::moveBufPtr(char* const ptr)
       _readBufPtr++;
     }
   }
-   
    return true;
+ }
 }
 
 // [Notes]
@@ -466,142 +466,4 @@ CmdParser::retrieveHistory()
    cout << _readBuf;
 
    _readBufPtr = _readBufEnd = _readBuf + _history[_historyIdx].size();
-}
-
-//My Functions 
-void backspace(char*& rbp,char*& rbe,const char& rb){
-
-  if(rbp!=&rb){
-
-  char* temp_ptr = rbp;
-
-  char* pre_ptr = temp_ptr;
-  
-  pre_ptr--;
-  
-  int count=0;
-  
-  cout<<'\b';
-  
-  while(temp_ptr!=rbe){
-  
-    *pre_ptr = * temp_ptr;
-  
-    cout<<*pre_ptr;
-    
-    temp_ptr++;
-    
-    pre_ptr++;
-    
-    count++;
-  }
-
-
-  rbp--; 
-  
-  rbe--;
-
-  *rbe='\0';
-
-  
-  cout<<" ";
-  
-  for(int i=0;i<(count+1);i++)
-      cout<<'\b';
-  }
-  
-  else 
-    mybeep();
-
-
-}
-
-
-void moveCursorR(char*& rbp, char*& rbe){
-
-  if(rbp!=rbe){
-  
-    cout<<*rbp;
-  
-    rbp++;
-}
-  
-  else
-    mybeep();
-}
-
-void moveCursorL(char*& rbp, const char& rb){
-
-  if(rbp!= &rb){
-  
-    cout<<'\b';
-  
-    rbp--;
-  }
-  
-  else
-    mybeep();
-}
-
-void insertTab(char*& rbp, char*& rbe){
-
-  if(rbp == rbe){
-
-      for(int i=0; i<TAB_POSITION; i++){
-
-        *rbp =' ';
-
-        rbe++;
-
-        cout<< *rbp;
-
-        rbp++;
-      }
-  }
-
-  else{
-
-    for(int i=0; i<TAB_POSITION; i++){
-      char temp_c;
-      char next_c;
-      char* temp_ptr;
-      int count=0;
-
-      temp_c = ' ';
-
-      temp_ptr = rbp;
-
-      rbe++;
-
-      while(rbp!=rbe){
-
-        next_c = *rbp;
-
-        *rbp = temp_c;
-
-        cout<<*rbp;
-
-        rbp++;
-
-        temp_c = next_c;
-
-        count++;
-
-      }
-
-      rbp = temp_ptr;
-        
-
-      for(int i=1;i<count;i++)
-        cout<<'\b';
-
-      rbp = temp_ptr;
-
-      rbp++;
-
-    }
-
-  }
-
-
 }
