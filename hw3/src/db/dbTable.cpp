@@ -133,11 +133,15 @@ DBSort::operator() (const DBRow& r1, const DBRow& r2) const
 {
    // vTODO: called as a functional object that compares the data in r1 and r2
    //       based on the order defined in _sortOrder
+  bool changed = false;
   for(int i=0;i<_sortOrder.size();i++){
-    if(r1[_sortOrder[i]]>r2[_sortOrder[i]]){
+    if(r1[_sortOrder[i]]>r2[_sortOrder[i]] && !changed){
+      changed = true;
       return true;
       break;
     }
+    else if(r1[_sortOrder[i]]<r2[_sortOrder[i]])
+      changed = true;
   }
    return false;
 }
@@ -200,7 +204,7 @@ DBTable::getMax(size_t c) const
         nan=false;
       }
    }
-   return (nan ? 0.1:temp_max);
+   return (nan ? (float)INT_MAX:temp_max);
 }
 
 float
@@ -213,7 +217,7 @@ DBTable::getMin(size_t c) const
         temp_min=_table[i][c];
       }
    }
-   return (temp_min==INT_MAX ? 0.1:temp_min);
+   return temp_min;
 }
 
 float 
@@ -228,7 +232,7 @@ DBTable::getSum(size_t c) const
        nan=false;
     }      
    }
-   return (nan ? 0.1:temp_sum);
+   return (nan ? 0.01:temp_sum);
 }
 
 int
@@ -251,7 +255,7 @@ DBTable::getAve(size_t c) const
    bool nan = true;
    if(getCount(c)!=0)
       nan = false;
-   return (nan ? 0.1:getSum(c)/getCount(c));
+   return (nan ? (float)INT_MAX:getSum(c)/getCount(c));
 }
 
 void
@@ -259,7 +263,7 @@ DBTable::sort(const struct DBSort& s)
 {
    // vTODO: sort the data according to the order of columns in 's'
   for(int i=0; i<nRows(); i++){
-    for(int j=0; j<nCols(); j++)
+    for(int j=i+1; j<nRows(); j++){
       if(s(_table[i],_table[j])){
         for(int k=0; k<nCols(); k++){
           int temp_int = _table[i][k];
@@ -267,6 +271,7 @@ DBTable::sort(const struct DBSort& s)
           _table[j][k] = temp_int;
         }
       } 
+    }
   }
 }
 

@@ -55,21 +55,67 @@ static bool checkRowIdx(const string& token, int& c)
 bool
 initDbCmd()
 {
-   // TODO...
+   // vODO...
+    if (!(cmdMgr->regCmd("DBAPpend", 4, new DBAppendCmd) &&
+         cmdMgr->regCmd("DBAVerage", 4, new DBAveCmd) &&
+         cmdMgr->regCmd("DBCount", 3, new DBCountCmd) &&
+         cmdMgr->regCmd("DBDelete", 3, new DBDelCmd) &&
+         cmdMgr->regCmd("DBMAx", 4, new DBMaxCmd) &&
+         cmdMgr->regCmd("DBMIn", 4, new DBMinCmd) &&
+         cmdMgr->regCmd("DBPrint", 3, new DBPrintCmd) &&
+         cmdMgr->regCmd("DBRead", 3, new DBReadCmd) &&
+         cmdMgr->regCmd("DBSOrt", 4, new DBSortCmd) &&
+         cmdMgr->regCmd("DBSUm", 4, new DBSumCmd)       
+         )) {
+      cerr << "Registering \"init\" commands fails... exiting" << endl;
+      return false;
+   }
    return true;
 }
 
 //----------------------------------------------------------------------
-//    DBAPpend <-Row | -Column> <(int data)...>
+//    DBAPpend <-Row | -Column> <(int data)...> doit
 //----------------------------------------------------------------------
 CmdExecStatus
 DBAppendCmd::exec(const string& option)
 {
-   // TODO...
+   // vODO...
    // check option
+   vector<string> options;
+   if (!CmdExec::lexOptions(option, options))
+      return CMD_EXEC_ERROR;
+
+   bool doRow = false;
+   if (myStrNCmp("-Row", options[0], 2) == 0) doRow = true;
+   else if (myStrNCmp("-Column", options[0], 2) != 0)
+      return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[0]);
+
+   if (options.empty())
+      return CmdExec::errorOption(CMD_OPT_MISSING, "");
+
+   vector<int> v;
+   for(int i=1,n=options.size();i<n;i++){
+      int b;
+      if(options[i]=="-")
+         v.push_back(INT_MAX);
+      else{
+         myStr2Int(options[i],b);
+         v.push_back(b);
+      }
+   }
+   
+   if (doRow) {
+      DBRow r(v);
+      dbtbl.addRow(r);
+   }
+   else {
+      dbtbl.addCol(v);
+   }
 
    return CMD_EXEC_DONE;
+
 }
+
 
 void
 DBAppendCmd::usage(ostream& os) const
@@ -100,8 +146,12 @@ DBAveCmd::exec(const string& option)
 
    float a = dbtbl.getAve(c);
    ios_base::fmtflags origFlags = cout.flags();
-   cout << "The average of column " << c << " is " << fixed
-        << setprecision(2) << a << ".\n";
+   if(a!=(float)INT_MAX)
+      cout << "The average of column " << c << " is " << fixed
+           << setprecision(2) << a << ".\n";
+   else
+      cout << "The average of column " << c << " is NAN." << endl;
+
    cout.flags(origFlags);
 
    return CMD_EXEC_DONE;
@@ -174,10 +224,13 @@ DBDelCmd::exec(const string& option)
    if (doRow) {
       if (!checkRowIdx(options[1], c)) return CMD_EXEC_ERROR;
       dbtbl.delRow(c);
+      cout<<"The row #"<<c<<" is deleted"<<endl;
    }
    else {
       if (!checkColIdx(options[1], c)) return CMD_EXEC_ERROR;
       dbtbl.delCol(c);
+      cout<<"The col #"<<c<<" is deleted"<<endl;
+
    }
 
    return CMD_EXEC_DONE;
@@ -211,7 +264,11 @@ DBMaxCmd::exec(const string& option)
    if (!checkColIdx(option, c)) return CMD_EXEC_ERROR;
 
    float n = dbtbl.getMax(c);
-   cout << "The max data of column " << c << " is " << n << "." << endl;
+   if(n != (float)INT_MAX)
+     cout << "The max data of column " << c << " is " << n << "." << endl;
+   else
+      cout << "The maximum of column " << c << " is NAN." << endl;
+
 
    return CMD_EXEC_DONE;
 }
@@ -244,7 +301,11 @@ DBMinCmd::exec(const string& option)
    if (!checkColIdx(option, c)) return CMD_EXEC_ERROR;
 
    float n = dbtbl.getMin(c);
-   cout << "The min data of column " << c << " is " << n << "." << endl;
+   if(n!=(float)INT_MAX)
+      cout << "The min data of column " << c << " is " << n << "." << endl;
+   else
+      cout << "The min of column " << c << " is NAN." << endl;
+
 
    return CMD_EXEC_DONE;
 }
@@ -270,8 +331,61 @@ DBMinCmd::help() const
 CmdExecStatus
 DBPrintCmd::exec(const string& option)
 {  
-   // TODO...
+   // vODO...
+   vector<string> options;
+   if (!CmdExec::lexOptions(option, options))
+      return CMD_EXEC_ERROR;
+   if (options.empty())
+      return CmdExec::errorOption(CMD_OPT_MISSING, "");
+   int ps;
+   enum PrintStatus{pDATA=0,pROW=1,pCOL=2,pTABLE=3,pSUMMARY=4, pTOT};
 
+   int rI, cI;
+   if(myStr2Int(options[0],rI) && myStr2Int(options[1],cI)) ps=0;
+   else if (myStrNCmp("-Row", options[0], 2) == 0) ps=1;
+   else if (myStrNCmp("-Column", options[0], 2) == 0) ps=2;
+   else if (myStrNCmp("-Table", options[0], 2) == 0) ps = 3;
+   else if (myStrNCmp("-Summary", options[0], 2) == 0) ps = 4;
+   else return CmdExec::errorOption(CMD_OPT_ILLEGAL, options[0]);
+   
+   switch(ps){
+      case pDATA:
+         if(! checkRowIdx(options[0],rI) || !checkColIdx(options[1],cI))
+            break;
+         cout<<"The data in ["<<rI<<"]["<<cI<<"] is: ";
+         if(dbtbl[rI][cI]==INT_MAX)
+            cout<<"NAN"<<endl;
+         else
+            cout<<dbtbl[rI][cI]<<endl;            
+      break;
+
+      case pROW:
+         if (options.empty())
+            return CmdExec::errorOption(CMD_OPT_MISSING, "");
+         if (!checkColIdx(options[1], rI)) 
+            return CMD_EXEC_ERROR;
+         cout<<dbtbl[rI];
+      break;
+   
+      case pCOL:
+         if (options.empty())
+            return CmdExec::errorOption(CMD_OPT_MISSING, "");
+         if (!checkColIdx(options[1], cI)) 
+            return CMD_EXEC_ERROR;
+         dbtbl.printCol(cI);
+      break;
+
+      case pTABLE:
+         cout<<dbtbl;
+      break;
+
+      case pSUMMARY:
+         dbtbl.printSummary();
+      break;
+   }
+
+   /*
+   */
    return CMD_EXEC_DONE;
 }
 
@@ -333,7 +447,7 @@ DBReadCmd::exec(const string& option)
       cout << "Table is replaced..." << endl;
       dbtbl.reset();
    }
-   if (!(ifs >> dbtbl)) return CMD_EXEC_ERROR;
+   if ((ifs >> dbtbl)) return CMD_EXEC_ERROR;
    cout << "\"" << fileName << "\" was read in successfully." << endl;
 
    return CMD_EXEC_DONE;
@@ -406,7 +520,11 @@ DBSumCmd::exec(const string& option)
    if (!checkColIdx(option, c)) return CMD_EXEC_ERROR;
 
    float n = dbtbl.getSum(c);
-   cout << "The sum of column " << c << " is " << n << "." << endl;
+
+   if(n == 0.01f)
+      cout << "The sum of column " << c << " is " << "NAN" << "." << endl;
+   else
+      cout << "The sum of column " << c << " is "<<n<<"." << endl;
 
    return CMD_EXEC_DONE;
 }
