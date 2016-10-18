@@ -9,6 +9,9 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
+#include <vector>
+#include <stdio.h>
+#include <string.h>
 #include "util.h"
 #include "cmdParser.h"
 
@@ -30,7 +33,13 @@ CmdParser::openDofile(const string& dof)
 {
    // TODO...
    _dofile = new ifstream(dof.c_str());
-   return true;
+   if(!_dofile->is_open()){
+      closeDofile();
+      return false;
+   }
+   else
+      return true;
+   
 }
 
 // Must make sure _dofile != 0
@@ -39,6 +48,7 @@ CmdParser::closeDofile()
 {
    assert(_dofile != 0);
    // TODO...
+   _dofile->close();
    delete _dofile;
 }
 
@@ -67,7 +77,6 @@ CmdParser::regCmd(const string& cmd, unsigned nCmp, CmdExec* e)
    string optCmd = cmd.substr(nCmp);
    assert(e != 0);
    e->setOptCmd(optCmd);
-
    // insert (mandCmd, e) to _cmdMap; return false if insertion fails.
    return (_cmdMap.insert(CmdRegPair(mandCmd, e))).second;
 }
@@ -86,8 +95,9 @@ CmdParser::execOneCmd()
    if (newCmd) {
       string option;
       CmdExec* e = parseCmd(option);
-      if (e != 0)
+      if (e != 0){
          return e->exec(option);
+      }
    }
    return CMD_EXEC_NOP;
 }
@@ -97,7 +107,13 @@ CmdParser::execOneCmd()
 void
 CmdParser::printHelps() const
 {
-   // TODO...
+   // vODO...
+   CmdExec* e;
+   for(auto el: _cmdMap){
+      e=el.second;
+      e->help();
+   }
+
 }
 
 void
@@ -138,9 +154,49 @@ CmdParser::parseCmd(string& option)
    assert(!_history.empty());
    string str = _history.back();
 
-   // TODO...
+   // vODO...
+   string cmd;
+   size_t bl;
+
+   bl = str.find_first_of(' ');
+   for(int i=0;i<str.size();i++){
+      if(i<bl)
+         cmd.push_back(str[i]);
+      else if(i>bl)
+         option.push_back(str[i]);
+   }
+   /*
+   bool iscmd = true;
+   vector<string> ops;
+
+   for(auto e:_cmdMap){
+      string temp_cmd;
+      for(int i=0; i<cmd.size()||i<e.first.size();i++){
+         if(toupper(cmd[i]) == e.first[i] && iscmd)
+            temp_cmd+=e.first[i];
+         else
+            iscmd = false;
+      }
+      if(iscmd){
+         ops.push_back(temp_cmd);
+      }
+      iscmd=true;
+   }
+   
+   if(ops.size()!=1){
+      cerr<<"Illegal command!! ("<<cmd<<")"<<endl;
+      return NULL;
+   }
+   */
    assert(str[0] != 0 && str[0] != ' ');
-   return NULL;
+
+   CmdExec* e = getCmd(cmd);
+   if(e==0){
+      cerr<<"Illegal command!! ("<<cmd<<")"<<endl;
+      return NULL;
+   }
+   else
+      return e;
 }
 
 // This function is called by pressing 'Tab'.
@@ -223,9 +279,57 @@ CmdParser::listCmd(const string& str)
 CmdExec*
 CmdParser::getCmd(string cmd)
 {
-   CmdExec* e = 0;
-   // TODO...
-   return e;
+   CmdExec* _e = 0;
+   // vODO...
+   //for(auto c:cmd)
+   //   c=toupper(c);
+   //cout<<"cmd: "<<cmd;
+   string t_cmd;
+   bool iscmd=true;
+
+   for(auto e:_cmdMap){
+      iscmd=true;
+      if(cmd.size()>=e.first.size()){
+         for(int i=0;i<e.first.size();i++){
+            if(toupper(cmd[i]) == e.first[i]){
+             t_cmd.push_back(toupper(cmd[i]));
+             iscmd = true;
+          }
+            else{
+             iscmd = false;
+             t_cmd.clear();
+             break;
+          }
+         }            
+         if(iscmd){
+            if(cmd.size()==e.first.size()){
+               _e = e.second;
+               return _e;
+            }
+            else{
+               for(int k=0,j=e.first.size(); j<cmd.size();j++,k++){
+                  if(toupper(cmd[j])==toupper(e.second->getOptCmd()[k]))
+                     iscmd = true;
+                  else{
+                     iscmd = false;
+                     t_cmd.clear();
+                     break;
+                  }
+               }
+               if(iscmd){
+                  _e = e.second;
+                  return _e;
+               }
+            }
+         }
+         else
+            iscmd=false;
+      }
+      else
+         iscmd = false;
+   }
+   
+   return _e;
 }
 
 
